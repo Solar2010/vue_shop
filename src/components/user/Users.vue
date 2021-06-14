@@ -68,7 +68,7 @@
               <el-button type="primary" icon="el-icon-edit" circle size="mini" @click="showEditDialog(scope.row.id)" />
             </el-tooltip>
             <el-tooltip effect="dark" content="分配权限" placement="top">
-              <el-button type="success" icon="el-icon-setting" circle size="mini" />
+              <el-button type="success" icon="el-icon-setting" circle size="mini" @click="allocRole(scope.row)" />
             </el-tooltip>
             <el-tooltip effect="dark" content="删除管理员" placement="top">
               <el-button type="danger" icon="el-icon-delete" circle size="mini" @click="delUser(scope.row.id)" />
@@ -135,6 +135,33 @@
         <el-button type="primary" @click="editUser">确 定</el-button>
       </span>
     </el-dialog>
+
+    <el-dialog
+      title="分配角色"
+      :visible.sync="allocDialogVisible"
+      width="50%"
+      @close="resetRole"
+    >
+      <div>
+        <p>当前用户：{{ userInfo.username }}</p>
+        <p>当前角色：{{ userInfo.role_name }}</p>
+        <p>
+          分配新角色：
+          <el-select v-model="selectedRoleId" placeholder="请选择">
+            <el-option
+              v-for="item in roleList"
+              :key="item.id"
+              :label="item.roleName"
+              :value="item.id"
+            />
+          </el-select>
+        </p>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="allocDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="save()">确 定</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -165,6 +192,7 @@ export default {
       total: 0,
       dialogVisible: false,
       dialogVisibleOfEdit: false,
+      allocDialogVisible: false,
       addForm: {
         username: '',
         password: '',
@@ -204,7 +232,10 @@ export default {
           { required: true, message: '请输入手机号', trigger: 'blur' },
           { validator: ckMobile, trigger: 'blur' }
         ]
-      }
+      },
+      userInfo: {},
+      roleList: [],
+      selectedRoleId: ''
     }
   },
   created() {
@@ -302,6 +333,31 @@ export default {
       }
       this.$message.success('删除用户成功')
       this.getUserList()
+    },
+    async allocRole(row) {
+      this.userInfo = row
+      const { data: result } = await this.$http.get(`roles`)
+      if (result.meta.status !== 200) {
+        return this.$message.error('获取角色列表失败')
+      }
+      this.roleList = result.data
+      this.allocDialogVisible = true
+    },
+    async save() {
+      if (!this.selectedRoleId) {
+        return this.$message.error('请选择要分配的角色')
+      }
+      const { data: result } = await this.$http.put(`users/${this.userInfo.id}/role`, { rid: this.selectedRoleId })
+      if (result.meta.status !== 200) {
+        return this.$message.error('更新角色失败')
+      }
+      this.$message.success('更新角色成功')
+      this.getUserList()
+      this.allocDialogVisible = false
+    },
+    resetRole() {
+      this.selectedRoleId = ''
+      this.userInfo = {}
     }
   }
 }
